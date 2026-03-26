@@ -1,0 +1,9 @@
+# Binaries
+/sberscribe
+
+# IDEs directories
+.idea
+.vscode
+
+# Storage
+*.json
