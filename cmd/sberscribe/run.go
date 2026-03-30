@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/dmnAlex/sberscribe/internal/auth"
 	"github.com/dmnAlex/sberscribe/internal/config"
 	"github.com/dmnAlex/sberscribe/internal/logger"
 	"github.com/dmnAlex/sberscribe/internal/repository"
@@ -34,6 +36,12 @@ func run() error {
 	repo := repository.New(db)
 
 	bot, err := telegram.New(cfg.TelegramToken, repo)
+
+	tokenMgr := auth.NewTokenManager(auth.NewOAuthHTTPClient(), cfg)
+	saluteTkn, err := tokenMgr.GetToken(globalCtx, auth.ScopeSaluteSpeechPers)
+	fmt.Println(saluteTkn, err)
+	gigaTkn, err := tokenMgr.GetToken(globalCtx, auth.ScopeGigaChatPers)
+	fmt.Println(gigaTkn, err)
 
 	logger.Log.Info("starting sberscribe bot")
 	go bot.Start()

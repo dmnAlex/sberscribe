@@ -7,3 +7,6 @@
 
 # Storage
 *.json
+
+# env
+.env

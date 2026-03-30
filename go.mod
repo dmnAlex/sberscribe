@@ -6,11 +6,14 @@ require (
 	dario.cat/mergo v1.0.2
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/golang-migrate/migrate/v4 v4.19.1
+	github.com/google/uuid v1.6.0
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6
 	github.com/jackc/pgx/v5 v5.9.1
+	github.com/joho/godotenv v1.5.1
 	github.com/pkg/errors v0.9.1
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.7
+	gopkg.in/telebot.v3 v3.3.8
 )
 
 require (
@@ -22,5 +25,4 @@ require (
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250818200422-3122310a409c // indirect
-	gopkg.in/telebot.v3 v3.3.8 // indirect
 )

@@ -7,6 +7,7 @@ import (
 
 	"dario.cat/mergo"
 	"github.com/caarlos0/env"
+	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
 )
 
@@ -15,7 +16,12 @@ type Config struct {
 	DatabaseDSN    string `env:"DATABASE_DSN" json:"database_dsn"`
 	MigrationsPath string `env:"MIGRATIONS_PATH" json:"migrations_path"`
 
-	TelegramToken string `env:"TELEGRAM_TOKEN" json:"telegram_token" required:"true"`
+	TelegramToken string `env:"TELEGRAM_TOKEN,required" json:"-"`
+
+	SaluteSpeechClientSecret string `env:"SALUTE_SPEECH_CLIENT_SECRET,required" json:"-"`
+
+	GigaChatClientSecret string `env:"GIGA_CHAT_CLIENT_SECRET,required" json:"-"`
+	GigaChatModel        string `env:"GIGACHAT_MODEL" json:"giga_chat_model"`
 }
 
 func New() (*Config, error) {
@@ -43,6 +49,10 @@ func New() (*Config, error) {
 		}
 	}
 
+	if err := godotenv.Load(); err != nil {
+		return nil, errors.Wrap(err, "load env file")
+	}
+
 	if err := env.Parse(cfg); err != nil {
 		return nil, err
 	}
@@ -58,6 +68,9 @@ func setDefaults(cfg *Config) {
 	}
 	if cfg.MigrationsPath == "" {
 		cfg.MigrationsPath = "./migrations"
+	}
+	if cfg.GigaChatModel == "" {
+		cfg.GigaChatModel = "GigaChat 2 Lite"
 	}
 }
 
