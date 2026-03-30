@@ -4,7 +4,7 @@ package smartspeech.task.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/sberdevices/smartspeech/task/v1;task";
+option go_package = "github.com/dmnAlex/sberscribe/pkg/api/taskv1";
 option java_package = "ru.sberdevices.smartspeech.task.v1";
 
 service SmartSpeech {

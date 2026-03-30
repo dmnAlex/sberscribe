@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package gigachat.v1;
 
-option go_package = "./;protocol";
+option go_package = "github.com/dmnAlex/sberscribe/pkg/api/gigachatv1";
 
 // Возвращает ответ модели на сообщение в формате ChatRequest.
 service ChatService {

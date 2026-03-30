@@ -5,7 +5,7 @@ package smartspeech.recognition.v1;
 import "google/protobuf/duration.proto";
 import "task.proto";
 
-option go_package = "./;protocol";
+option go_package = "github.com/dmnAlex/sberscribe/pkg/api/recognitionv1";
 option java_package = "TODO";
 
 service SmartSpeech {

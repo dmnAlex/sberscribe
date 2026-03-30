@@ -14,6 +14,8 @@ type Config struct {
 	LogLevel       string `env:"LOG_LEVEL" json:"log_level"`
 	DatabaseDSN    string `env:"DATABASE_DSN" json:"database_dsn"`
 	MigrationsPath string `env:"MIGRATIONS_PATH" json:"migrations_path"`
+
+	TelegramToken string `env:"TELEGRAM_TOKEN" json:"telegram_token" required:"true"`
 }
 
 func New() (*Config, error) {
