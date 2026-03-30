@@ -42,3 +42,10 @@ func (b *Bot) handleStart(c telebot.Context) error {
 	}
 	return c.Send("👋 Добро пожаловать! Загружайте аудио/голосовые сообщения.")
 }
+
+// func (b *Bot) enqueueFile(c telebot.Context, fileID, mime string) error {
+// 	file, err := b.bot.FileByID(fileID)
+// 	if err != nil {
+// 		return c.Send("Не удалось получить информацию о файле")
+// 	}
+// }
