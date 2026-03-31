@@ -3,6 +3,7 @@ package salutespeech
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"strings"
@@ -14,7 +15,7 @@ import (
 	"github.com/dmnAlex/sberscribe/pkg/api/taskv1"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -28,19 +29,29 @@ const (
 type Client struct {
 	tokenMgr *auth.TokenManager
 	conn     *grpc.ClientConn
+
+	storageClient storagev1.SmartSpeechClient
+	recognClient  recognitionv1.SmartSpeechClient
+	taskClient    taskv1.SmartSpeechClient
 }
 
-func NewSaluteClient(tokenMgr *auth.TokenManager) (*Client, error) {
-	conn, err := grpc.NewClient(saluteAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func NewSaluteClient(tokenMgr *auth.TokenManager, tlsConfig *tls.Config) (*Client, error) {
+	conn, err := grpc.NewClient(saluteAddress, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	if err != nil {
 		return nil, errors.Wrap(err, "new grpc client")
 	}
-	return &Client{tokenMgr: tokenMgr, conn: conn}, nil
+	return &Client{
+		tokenMgr:      tokenMgr,
+		conn:          conn,
+		storageClient: storagev1.NewSmartSpeechClient(conn),
+		recognClient:  recognitionv1.NewSmartSpeechClient(conn),
+		taskClient:    taskv1.NewSmartSpeechClient(conn),
+	}, nil
 }
 
 func (c *Client) Close() { c.conn.Close() }
 
-func (c *Client) Recognize(ctx context.Context, audio []byte, mimeType string) (string, []byte, error) {
+func (c *Client) Recognize(ctx context.Context, audio io.Reader, mimeType string) (string, []byte, error) {
 	token, err := c.tokenMgr.GetToken(ctx, auth.ScopeSaluteSpeechPers)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "get token")
@@ -73,25 +84,30 @@ func (c *Client) Recognize(ctx context.Context, audio []byte, mimeType string) (
 	return text, raw, errors.Wrap(err, "extract text")
 }
 
-func (c *Client) upload(ctx context.Context, audio []byte) (string, error) {
-	client := storagev1.NewSmartSpeechClient(c.conn)
-	stream, err := client.Upload(ctx)
+func (c *Client) upload(ctx context.Context, audio io.Reader) (string, error) {
+	stream, err := c.storageClient.Upload(ctx)
 	if err != nil {
-		return "", errors.Wrap(err, "upload")
+		return "", errors.Wrap(err, "upload to storage")
 	}
 
-	for i := 0; i < len(audio); i += chunkSize {
-		end := i + chunkSize
-		if end > len(audio) {
-			end = len(audio)
+	buf := make([]byte, chunkSize)
+	for {
+		n, err := audio.Read(buf)
+		if n > 0 {
+			req := storagev1.UploadRequest_builder{
+				FileChunk: buf[:n],
+			}.Build()
+
+			if sendErr := stream.Send(req); sendErr != nil {
+				return "", errors.Wrap(sendErr, "send stream")
+			}
 		}
 
-		req := storagev1.UploadRequest_builder{
-			FileChunk: audio[i:end],
-		}.Build()
-
-		if err := stream.Send(req); err != nil {
-			return "", errors.Wrap(err, "send stream")
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return "", errors.Wrap(err, "read audio")
 		}
 	}
 
@@ -104,7 +120,6 @@ func (c *Client) upload(ctx context.Context, audio []byte) (string, error) {
 }
 
 func (c *Client) asyncRecognize(ctx context.Context, requestFileID, mimeType string) (string, error) {
-	client := recognitionv1.NewSmartSpeechClient(c.conn)
 	encoding := recognitionv1.RecognitionOptions_MP3
 	if mimeType == "audio/ogg" {
 		encoding = recognitionv1.RecognitionOptions_OPUS
@@ -121,7 +136,7 @@ func (c *Client) asyncRecognize(ctx context.Context, requestFileID, mimeType str
 		RequestFileId: requestFileID,
 	}.Build()
 
-	task, err := client.AsyncRecognize(ctx, req)
+	task, err := c.recognClient.AsyncRecognize(ctx, req)
 	if err != nil {
 		return "", errors.Wrap(err, "async recognize")
 	}
@@ -130,13 +145,12 @@ func (c *Client) asyncRecognize(ctx context.Context, requestFileID, mimeType str
 }
 
 func (c *Client) pollTask(ctx context.Context, taskID string) (string, error) {
-	client := taskv1.NewSmartSpeechClient(c.conn)
-	for i := 0; i < maxPollAttempts; i++ {
+	for range maxPollAttempts {
 		req := taskv1.GetTaskRequest_builder{
 			TaskId: taskID,
 		}.Build()
 
-		res, err := client.GetTask(ctx, req)
+		res, err := c.taskClient.GetTask(ctx, req)
 		if err != nil {
 			return "", errors.Wrap(err, "get task")
 		}
@@ -164,12 +178,11 @@ func (c *Client) pollTask(ctx context.Context, taskID string) (string, error) {
 }
 
 func (c *Client) download(ctx context.Context, responseFileID string) ([]byte, error) {
-	client := storagev1.NewSmartSpeechClient(c.conn)
 	req := storagev1.DownloadRequest_builder{
 		ResponseFileId: responseFileID,
 	}.Build()
 
-	stream, err := client.Download(ctx, req)
+	stream, err := c.storageClient.Download(ctx, req)
 	if err != nil {
 		return nil, errors.Wrap(err, "download")
 	}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,8 +10,10 @@ import (
 	"github.com/dmnAlex/sberscribe/internal/config"
 	"github.com/dmnAlex/sberscribe/internal/logger"
 	"github.com/dmnAlex/sberscribe/internal/repository"
+	"github.com/dmnAlex/sberscribe/internal/salutespeech"
 	"github.com/dmnAlex/sberscribe/internal/storage/pg"
 	"github.com/dmnAlex/sberscribe/internal/telegram"
+	"github.com/dmnAlex/sberscribe/internal/utils"
 	"github.com/pkg/errors"
 )
 
@@ -33,15 +34,20 @@ func run() error {
 	}
 	defer db.Close()
 
+	tokenMgr := auth.NewTokenManager(auth.NewOAuthHTTPClient(), cfg)
+	tlsConfig, err := utils.NewTLSConfig(cfg.CACertPath)
+	if err != nil {
+		return errors.Wrap(err, "new tls config")
+	}
+
+	saluteClient, err := salutespeech.NewSaluteClient(tokenMgr, tlsConfig)
+	if err != nil {
+		return errors.Wrap(err, "new salute client")
+	}
+
 	repo := repository.New(db)
 
-	bot, err := telegram.New(cfg.TelegramToken, repo)
-
-	tokenMgr := auth.NewTokenManager(auth.NewOAuthHTTPClient(), cfg)
-	saluteTkn, err := tokenMgr.GetToken(globalCtx, auth.ScopeSaluteSpeechPers)
-	fmt.Println(saluteTkn, err)
-	gigaTkn, err := tokenMgr.GetToken(globalCtx, auth.ScopeGigaChatPers)
-	fmt.Println(gigaTkn, err)
+	bot, err := telegram.New(cfg.TelegramToken, repo, saluteClient)
 
 	logger.Log.Info("starting sberscribe bot")
 	go bot.Start()

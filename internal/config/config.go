@@ -22,6 +22,8 @@ type Config struct {
 
 	GigaChatClientSecret string `env:"GIGA_CHAT_CLIENT_SECRET,required" json:"-"`
 	GigaChatModel        string `env:"GIGACHAT_MODEL" json:"giga_chat_model"`
+
+	CACertPath string `env:"CA_CERT_PATH,required" json:"-"`
 }
 
 func New() (*Config, error) {

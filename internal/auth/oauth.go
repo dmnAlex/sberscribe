@@ -32,7 +32,7 @@ func (s Scope) String() string {
 
 type tokenResponse struct {
 	AccessToken string `json:"access_token"`
-	ExpiresIn   int    `json:"expires_in"`
+	ExpiresAt   int64  `json:"expires_at"`
 }
 
 type OAuthHTTPClient struct {
@@ -88,7 +88,7 @@ func (c *OAuthHTTPClient) GetToken(ctx context.Context, clientSecret string, sco
 		return "", errors.New("empty access_token")
 	}
 
-	logger.Log.Debug("got new token", "scope", scope, "token", tr.AccessToken, "exp", tr.ExpiresIn) // TODO DEBUG
+	logger.Log.Debug("got new token", "scope", scope, "token", tr.AccessToken, "exp", tr.ExpiresAt) // TODO DEBUG
 
 	return tr.AccessToken, nil
 }
