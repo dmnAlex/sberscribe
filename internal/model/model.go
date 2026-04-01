@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"encoding/json"
+	"slices"
+	"time"
+)
 
 type User struct {
 	ID         int64     `json:"id"`
@@ -11,4 +15,47 @@ type User struct {
 
 func (m *User) AsIfaceList() []any {
 	return []any{&m.ID, &m.TelegramID, &m.CreatedAt, &m.UpdatedAt}
+}
+
+type Meeting struct {
+	ID             int64   `json:"id"`
+	TelegramFileID string  `json:"telegram_file_id"`
+	Title          *string `json:"title,omitempty"`
+	Summary        *string `json:"summary,omitempty"`
+}
+
+func (m *Meeting) AsIfaceList() []any {
+	return []any{&m.ID, &m.TelegramFileID, &m.Title, &m.Summary}
+}
+
+type TranscriptionStatus string
+
+const (
+	StatusUndefined TranscriptionStatus = "UNDEFINED"
+	StatusNew       TranscriptionStatus = "NEW"
+	StatusRunning   TranscriptionStatus = "RUNNING"
+	StatusCanceled  TranscriptionStatus = "CANCELED"
+	StatusDone      TranscriptionStatus = "DONE"
+	StatusError     TranscriptionStatus = "ERROR"
+)
+
+type Transcription struct {
+	RequestFileID  string              `json:"request_file_id"`
+	ResponseFileID *string             `json:"response_file_id"`
+	Raw            json.RawMessage     `json:"raw,omitempty"`
+	Content        *string             `json:"content"`
+	Status         TranscriptionStatus `json:"status"`
+}
+
+func (m *Transcription) AsIfaceList() []any {
+	return []any{&m.RequestFileID, &m.ResponseFileID, &m.Raw, &m.Status}
+}
+
+type MeetingWithTranscription struct {
+	Meeting
+	Transcription
+}
+
+func (m *MeetingWithTranscription) AsIfaceList() []any {
+	return slices.Concat(m.Meeting.AsIfaceList(), m.Transcription.AsIfaceList())
 }

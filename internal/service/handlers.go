@@ -57,4 +57,9 @@ func (s *BotService) SetupHandlers() {
 		}
 		return nil
 	})
+
+	s.bot.Handle("/test", func(c telebot.Context) error {
+		c.Chat()
+		return nil
+	})
 }
