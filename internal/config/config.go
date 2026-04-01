@@ -72,7 +72,7 @@ func setDefaults(cfg *Config) {
 		cfg.MigrationsPath = "./migrations"
 	}
 	if cfg.GigaChatModel == "" {
-		cfg.GigaChatModel = "GigaChat 2 Lite"
+		cfg.GigaChatModel = "GigaChat"
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/dmnAlex/sberscribe/internal/auth"
 	"github.com/dmnAlex/sberscribe/internal/config"
+	"github.com/dmnAlex/sberscribe/internal/gigachat"
 	"github.com/dmnAlex/sberscribe/internal/logger"
 	"github.com/dmnAlex/sberscribe/internal/repository"
 	"github.com/dmnAlex/sberscribe/internal/salutespeech"
@@ -49,6 +50,11 @@ func run() error {
 		return errors.Wrap(err, "new salute client")
 	}
 
+	gcClient, err := gigachat.NewGigaClient(tokenMgr, tlsConfig, cfg.GigaChatModel)
+	if err != nil {
+		return errors.Wrap(err, "new giga client")
+	}
+
 	repo := repository.New(db)
 
 	bot, err := telebot.NewBot(telebot.Settings{
@@ -59,7 +65,7 @@ func run() error {
 		return errors.Wrap(err, "new bot")
 	}
 
-	botService, err := service.NewBotService(globalCtx, repo, ssClient, bot)
+	botService, err := service.NewBotService(globalCtx, repo, ssClient, gcClient, bot)
 	if err != nil {
 		return errors.Wrap(err, "new bot service")
 	}

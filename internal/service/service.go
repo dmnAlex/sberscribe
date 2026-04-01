@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/dmnAlex/sberscribe/internal/gigachat"
 	"github.com/dmnAlex/sberscribe/internal/logger"
 	"github.com/dmnAlex/sberscribe/internal/repository"
 	"github.com/dmnAlex/sberscribe/internal/salutespeech"
@@ -41,15 +42,16 @@ type BotService struct {
 	pool    *ants.Pool
 	repo    repository.Repository
 	salute  *salutespeech.Client
+	giga    *gigachat.Client
 	bot     *telebot.Bot
 }
 
-func NewBotService(ctx context.Context, repo repository.Repository, salute *salutespeech.Client, bot *telebot.Bot) (*BotService, error) {
+func NewBotService(ctx context.Context, repo repository.Repository, salute *salutespeech.Client, giga *gigachat.Client, bot *telebot.Bot) (*BotService, error) {
 	pool, err := ants.NewPool(poolSize, ants.WithExpiryDuration(expiryDuration))
 	if err != nil {
 		return nil, errors.Wrap(err, "new pool")
 	}
-	return &BotService{stopCtx: ctx, pool: pool, repo: repo, salute: salute, bot: bot}, nil
+	return &BotService{stopCtx: ctx, pool: pool, repo: repo, salute: salute, giga: giga, bot: bot}, nil
 }
 
 func (s *BotService) SubmitTask(task BotTask) error {
@@ -77,7 +79,7 @@ func (s *BotService) handleAudioProcessing(task BotTask) error {
 	info, ok := task.Data.(fileInfo)
 	if !ok {
 		s.sendReply(task.ChatID, "Ошибка: неверный формат файла")
-		return errors.New("cast data to string")
+		return errors.New("cast data to struct")
 	}
 
 	file, err := s.bot.FileByID(info.fileID)
@@ -108,7 +110,24 @@ func (s *BotService) handleAudioProcessing(task BotTask) error {
 }
 
 func (s *BotService) handleChatQuery(task BotTask) error {
-	s.sendReply(task.ChatID, "Функционал пока не реализован")
+	prompt, ok := task.Data.(string)
+	if !ok {
+		s.sendReply(task.ChatID, "Ошибка: неверный формат запроса")
+		return errors.New("cast data to string")
+	}
+
+	logger.Log.Debug("got chat prompt", "prompt", prompt)
+	answer, err := s.giga.Chat(s.stopCtx, prompt)
+	if err != nil {
+		return errors.Wrap(err, "giga chat")
+	}
+	// models, err := s.giga.GetModels(s.stopCtx)
+	// if err != nil {
+	// 	return errors.Wrap(err, "get models")
+	// }
+
+	// logger.Log.Debug("available models", "models", models)
+	s.sendReply(task.ChatID, answer)
 	return nil
 }
 

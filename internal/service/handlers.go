@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dmnAlex/sberscribe/internal/logger"
 	"gopkg.in/telebot.v3"
 )
 
@@ -59,7 +60,8 @@ func (s *BotService) SetupHandlers() {
 	})
 
 	s.bot.Handle("/test", func(c telebot.Context) error {
-		c.Chat()
+		chat := c.Chat()
+		logger.Log.Debug("chat data", "data", *chat)
 		return nil
 	})
 }
