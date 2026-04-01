@@ -11,14 +11,15 @@ import (
 )
 
 const createTranscriptionSQL = `
-	INSERT INTO transcriptions (meeting_id, request_file_id)
-	VALUES (@meetingID, requestFileID)
+	INSERT INTO transcriptions (meeting_id, request_file_id, status)
+	VALUES (@meetingID, @requestFileID, @status)
 `
 
-func (r *SberScribeRepo) CreateTranscription(ctx context.Context, meetingID int64, requestFileID string) error {
+func (r *SberScribeRepo) CreateTranscription(ctx context.Context, meetingID int64, requestFileID string, status model.TranscriptionStatus) error {
 	args := pgx.NamedArgs{
 		"meetingID":     meetingID,
 		"requestFileID": requestFileID,
+		"status":        status,
 	}
 
 	res, err := r.db.WithCtx(ctx).Exec(createTranscriptionSQL, args)

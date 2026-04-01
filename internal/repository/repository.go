@@ -11,12 +11,14 @@ import (
 )
 
 type Repository interface {
+	DoTx(f func(r Repository) error, opts ...*pgx.TxOptions) error
+
 	GetOrCreateUser(ctx context.Context, telegramID int64) (model.User, error)
 
-	CreateMeeting(ctx context.Context, userID, telegramFileID string) (int64, error)
+	CreateMeeting(ctx context.Context, userID int64, telegramFileID string) (int64, error)
 	UpdateMeeting(ctx context.Context, id int64, title, summary string) error
 
-	CreateTranscription(ctx context.Context, meetingID int64, requestFileID string) error
+	CreateTranscription(ctx context.Context, meetingID int64, requestFileID string, status model.TranscriptionStatus) error
 	UpdateTranscription(ctx context.Context, meetingID int64, responseFileID, content *string, raw json.RawMessage, status model.TranscriptionStatus) error
 
 	GetMeetinsByUser(ctx context.Context, userID int64) ([]model.Meeting, error)

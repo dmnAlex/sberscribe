@@ -59,3 +59,26 @@ type MeetingWithTranscription struct {
 func (m *MeetingWithTranscription) AsIfaceList() []any {
 	return slices.Concat(m.Meeting.AsIfaceList(), m.Transcription.AsIfaceList())
 }
+
+type RoleType string
+
+const (
+	SystemRole    RoleType = "system"
+	UserRole      RoleType = "user"
+	AssistantRole RoleType = "assistant"
+	FunctionRole  RoleType = "function"
+)
+
+func (s RoleType) String() string {
+	return string(s)
+}
+
+type ChatMessage struct {
+	Role    RoleType
+	Content string
+}
+
+type SummarizeResult struct {
+	Title   string `json:"title"`
+	Summary string `json:"summary"`
+}

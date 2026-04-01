@@ -51,37 +51,45 @@ func NewSaluteClient(tokenMgr *auth.TokenManager, tlsConfig *tls.Config) (*Clien
 
 func (c *Client) Close() { c.conn.Close() }
 
-func (c *Client) Recognize(ctx context.Context, audio io.Reader, mimeType string) (string, []byte, error) {
+func (c *Client) Upload(ctx context.Context, data io.Reader) (string, error) {
 	token, err := c.tokenMgr.GetToken(ctx, auth.ScopeSaluteSpeechPers)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "get token")
+		return "", errors.Wrap(err, "get token")
 	}
 
 	md := metadata.New(map[string]string{"authorization": "Bearer " + token})
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
-	requestFileID, err := c.upload(ctx, audio)
+	requestFileID, err := c.upload(ctx, data)
+	return requestFileID, errors.Wrap(err, "upload")
+}
+
+func (c *Client) Recognize(ctx context.Context, requestFileID, mimeType string) (string, string, []byte, error) {
+	token, err := c.tokenMgr.GetToken(ctx, auth.ScopeSaluteSpeechPers)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "upload")
+		return "", "", nil, errors.Wrap(err, "get token")
 	}
+
+	md := metadata.New(map[string]string{"authorization": "Bearer " + token})
+	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	taskID, err := c.asyncRecognize(ctx, requestFileID, mimeType)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "async recognize")
+		return "", "", nil, errors.Wrap(err, "async recognize")
 	}
 
-	responceFileID, err := c.pollTask(ctx, taskID)
+	responseFileID, err := c.pollTask(ctx, taskID)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "poll task")
+		return "", "", nil, errors.Wrap(err, "poll task")
 	}
 
-	raw, err := c.download(ctx, responceFileID)
+	raw, err := c.download(ctx, responseFileID)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "download")
+		return "", "", nil, errors.Wrap(err, "download")
 	}
 
 	text, err := extractText(raw)
-	return text, raw, errors.Wrap(err, "extract text")
+	return responseFileID, text, raw, errors.Wrap(err, "extract text")
 }
 
 func (c *Client) upload(ctx context.Context, audio io.Reader) (string, error) {

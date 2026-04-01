@@ -14,7 +14,7 @@ const createMeetingSQL = `
 	RETURNING id
 `
 
-func (r *SberScribeRepo) CreateMeeting(ctx context.Context, userID, telegramFileID string) (int64, error) {
+func (r *SberScribeRepo) CreateMeeting(ctx context.Context, userID int64, telegramFileID string) (int64, error) {
 	args := pgx.NamedArgs{
 		"userID":         userID,
 		"telegramFileID": telegramFileID,

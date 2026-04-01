@@ -1,17 +1,18 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
 	"github.com/dmnAlex/sberscribe/internal/logger"
+	"github.com/dmnAlex/sberscribe/internal/repository"
+	"github.com/pkg/errors"
 	"gopkg.in/telebot.v3"
 )
 
 func (s *BotService) SetupHandlers() {
 	s.bot.Handle("/start", func(c telebot.Context) error {
-		_, err := s.repo.GetOrCreateUser(context.Background(), c.Sender().ID)
+		_, err := s.repo.GetOrCreateUser(s.stopCtx, c.Sender().ID)
 		if err != nil {
 			return c.Reply("Ошибка регистрации")
 		}
@@ -24,9 +25,29 @@ func (s *BotService) SetupHandlers() {
 		if msg.Voice == nil {
 			return nil
 		}
+
+		var id int64
+		if err := s.repo.DoTx(func(rTx repository.Repository) error {
+			user, err := rTx.GetOrCreateUser(s.stopCtx, c.Sender().ID)
+			if err != nil {
+				return errors.Wrap(err, "get or create user")
+			}
+
+			id, err = rTx.CreateMeeting(s.stopCtx, user.ID, msg.Voice.FileID)
+			if err != nil {
+				return errors.Wrap(err, "create meeting")
+			}
+
+			return nil
+		}); err != nil {
+			logger.Log.Error("do tx", "error", err)
+			return c.Reply("Непредвиденная ошибка")
+		}
+
 		info := fileInfo{
-			fileID:   msg.Voice.FileID,
-			mimeType: msg.Voice.MIME,
+			meetingID: id,
+			fileID:    msg.Voice.FileID,
+			mimeType:  msg.Voice.MIME,
 		}
 		task := BotTask{
 			Type:   TaskProcessAudio,
@@ -38,7 +59,8 @@ func (s *BotService) SetupHandlers() {
 		if err := s.SubmitTask(task); err != nil {
 			return c.Reply("Сервер перегружен, попробуйте позже")
 		}
-		return nil
+
+		return c.Reply(fmt.Sprintf("Встреча %d принята в обработку", id))
 	})
 
 	s.bot.Handle("/chat", func(c telebot.Context) error {

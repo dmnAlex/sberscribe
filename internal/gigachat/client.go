@@ -6,6 +6,7 @@ import (
 
 	"github.com/dmnAlex/sberscribe/internal/auth"
 	"github.com/dmnAlex/sberscribe/internal/logger"
+	"github.com/dmnAlex/sberscribe/internal/model"
 	"github.com/dmnAlex/sberscribe/pkg/api/gigachatv1"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -51,7 +52,7 @@ func NewGigaClient(tokenMgr *auth.TokenManager, tlsConfig *tls.Config, model str
 
 func (c *Client) Close() { c.conn.Close() }
 
-func (c *Client) Chat(ctx context.Context, prompt string) (string, error) {
+func (c *Client) Chat(ctx context.Context, msgs []model.ChatMessage) (string, error) {
 	token, err := c.tokenMgr.GetToken(ctx, auth.ScopeGigaChatPers)
 	if err != nil {
 		return "", errors.Wrap(err, "get token")
@@ -60,14 +61,17 @@ func (c *Client) Chat(ctx context.Context, prompt string) (string, error) {
 	md := metadata.New(map[string]string{"authorization": "Bearer " + token})
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
+	gigaMsgs := make([]*gigachatv1.Message, 0, len(msgs))
+	for i := range msgs {
+		gigaMsgs = append(gigaMsgs, gigachatv1.Message_builder{
+			Role:    msgs[i].Role.String(),
+			Content: msgs[i].Content,
+		}.Build())
+	}
+
 	req := gigachatv1.ChatRequest_builder{
-		Model: c.model,
-		Messages: []*gigachatv1.Message{
-			gigachatv1.Message_builder{
-				Role:    "user",
-				Content: prompt,
-			}.Build(),
-		},
+		Model:    c.model,
+		Messages: gigaMsgs,
 	}.Build()
 
 	res, err := c.chatClient.Chat(ctx, req)
