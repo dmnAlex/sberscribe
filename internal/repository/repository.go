@@ -85,8 +85,8 @@ const findMeetingsSQL = `
 	SELECT m.id, m.telegram_file_id, m.title, m.summary
 	FROM meetings m
 	JOIN transcriptions t ON m.id = t.meeting_id
-	WHERE m.user_id = @userID AND t.status = @status AND to_tsvector('russian', content) @@ websearch_to_tsquery('russian', @query)
-	ORDER BY ts_rank(to_tsvector('russian', content), websearch_to_tsquery('russian', @query)) DESC, created_at DESC
+	WHERE m.user_id = @userID AND t.status = @status AND t.content_fts @@ websearch_to_tsquery('russian', @query)
+	ORDER BY ts_rank(t.content_fts, websearch_to_tsquery('russian', @query)) DESC, m.created_at DESC
 `
 
 func (r *SberScribeRepo) FindMeetings(ctx context.Context, userID int64, query string) ([]model.Meeting, error) {

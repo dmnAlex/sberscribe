@@ -128,9 +128,16 @@ func (c *Client) upload(ctx context.Context, audio io.Reader) (string, error) {
 }
 
 func (c *Client) asyncRecognize(ctx context.Context, requestFileID, mimeType string) (string, error) {
-	encoding := recognitionv1.RecognitionOptions_MP3
-	if mimeType == "audio/ogg" {
+	var encoding recognitionv1.RecognitionOptions_AudioEncoding
+	switch mimeType {
+	case "audio/ogg":
 		encoding = recognitionv1.RecognitionOptions_OPUS
+	case "audio/mpeg":
+		encoding = recognitionv1.RecognitionOptions_MP3
+	case "audio/flac":
+		encoding = recognitionv1.RecognitionOptions_FLAC
+	default:
+		return "", errors.Errorf("unsupported mime type: %s", mimeType)
 	}
 
 	opts := recognitionv1.RecognitionOptions_builder{

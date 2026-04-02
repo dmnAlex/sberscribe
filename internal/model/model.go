@@ -42,13 +42,13 @@ const (
 type Transcription struct {
 	RequestFileID  string              `json:"request_file_id"`
 	ResponseFileID *string             `json:"response_file_id"`
-	Raw            json.RawMessage     `json:"raw,omitempty"`
 	Content        *string             `json:"content"`
+	Raw            json.RawMessage     `json:"raw,omitempty"`
 	Status         TranscriptionStatus `json:"status"`
 }
 
 func (m *Transcription) AsIfaceList() []any {
-	return []any{&m.RequestFileID, &m.ResponseFileID, &m.Raw, &m.Status}
+	return []any{&m.RequestFileID, &m.ResponseFileID, &m.Content, &m.Raw, &m.Status}
 }
 
 type MeetingWithTranscription struct {

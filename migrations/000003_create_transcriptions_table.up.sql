@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS transcriptions (
     request_file_id TEXT NOT NULL,
     response_file_id TEXT,
     content TEXT,
+    content_fts tsvector GENERATED ALWAYS AS (to_tsvector('russian', content)) STORED,
     raw JSONB,
     status transcription_status NOT NULL DEFAULT 'UNDEFINED',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -19,4 +20,4 @@ CREATE TABLE IF NOT EXISTS transcriptions (
 );
 
 CREATE INDEX idx_transcriptions_meeting_id ON transcriptions(meeting_id);
-CREATE INDEX idx_transcriptions_content_fts ON transcriptions USING GIN (to_tsvector('russian', content)); 
+CREATE INDEX idx_transcriptions_fts ON transcriptions USING GIN (content_fts);
