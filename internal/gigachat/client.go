@@ -53,13 +53,10 @@ func NewGigaClient(tokenMgr *auth.TokenManager, tlsConfig *tls.Config, model str
 func (c *Client) Close() { c.conn.Close() }
 
 func (c *Client) Chat(ctx context.Context, msgs []model.ChatMessage) (string, error) {
-	token, err := c.tokenMgr.GetToken(ctx, auth.ScopeGigaChatPers)
+	ctx, err := c.prepareContext(ctx)
 	if err != nil {
-		return "", errors.Wrap(err, "get token")
+		return "", errors.Wrap(err, "prepare context")
 	}
-
-	md := metadata.New(map[string]string{"authorization": "Bearer " + token})
-	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	gigaMsgs := make([]*gigachatv1.Message, 0, len(msgs))
 	for i := range msgs {
@@ -83,13 +80,10 @@ func (c *Client) Chat(ctx context.Context, msgs []model.ChatMessage) (string, er
 }
 
 func (c *Client) GetModels(ctx context.Context) ([]ChatModel, error) {
-	token, err := c.tokenMgr.GetToken(ctx, auth.ScopeGigaChatPers)
+	ctx, err := c.prepareContext(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "get token")
+		return nil, errors.Wrap(err, "prepare context")
 	}
-
-	md := metadata.New(map[string]string{"authorization": "Bearer " + token})
-	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	req := gigachatv1.ListModelsRequest_builder{}.Build()
 
@@ -109,4 +103,14 @@ func (c *Client) GetModels(ctx context.Context) ([]ChatModel, error) {
 	}
 
 	return models, nil
+}
+
+func (c *Client) prepareContext(ctx context.Context) (context.Context, error) {
+	token, err := c.tokenMgr.GetToken(ctx, auth.ScopeGigaChatPers)
+	if err != nil {
+		return nil, errors.Wrap(err, "get token")
+	}
+
+	md := metadata.New(map[string]string{"authorization": "Bearer " + token})
+	return metadata.NewOutgoingContext(ctx, md), nil
 }

@@ -5,9 +5,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/dmnAlex/sberscribe/internal/auth"
+	"github.com/dmnAlex/sberscribe/internal/bot"
 	"github.com/dmnAlex/sberscribe/internal/config"
 	"github.com/dmnAlex/sberscribe/internal/gigachat"
 	"github.com/dmnAlex/sberscribe/internal/logger"
@@ -17,10 +17,7 @@ import (
 	"github.com/dmnAlex/sberscribe/internal/storage/pg"
 	"github.com/dmnAlex/sberscribe/internal/utils"
 	"github.com/pkg/errors"
-	"gopkg.in/telebot.v3"
 )
-
-const pollingTime = 10 * time.Second
 
 func run() error {
 	globalCtx, cancel := context.WithCancel(context.Background())
@@ -57,28 +54,27 @@ func run() error {
 
 	repo := repository.New(db)
 
-	bot, err := telebot.NewBot(telebot.Settings{
-		Token:  cfg.TelegramToken,
-		Poller: &telebot.LongPoller{Timeout: pollingTime},
-	})
+	bot, err := bot.NewBot(cfg.TelegramToken)
 	if err != nil {
 		return errors.Wrap(err, "new bot")
 	}
 
-	botService, err := service.NewBotService(globalCtx, repo, ssClient, gcClient, bot)
+	botService, err := service.New(globalCtx, repo, ssClient, gcClient, bot)
 	if err != nil {
 		return errors.Wrap(err, "new bot service")
 	}
-	botService.SetupHandlers()
 
 	go bot.Start()
 	logger.Log.Info("bot started")
+	botService.StartWorkers()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	<-quit
 
 	logger.Log.Info("shutdown signal received")
+	cancel()
+	botService.Stop()
 	bot.Stop()
 
 	return nil

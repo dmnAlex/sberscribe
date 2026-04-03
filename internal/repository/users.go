@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"time"
 
 	"github.com/dmnAlex/sberscribe/internal/model"
 	"github.com/jackc/pgx/v5"
@@ -11,16 +10,15 @@ import (
 
 const getOrCreateUserSQL = `
 	INSERT INTO users (telegram_id, created_at, updated_at)
-	VALUES (@telegramID, @now, @now)
+	VALUES (@telegramID, NOW(), NOW())
 	ON CONFLICT (telegram_id)
-	DO UPDATE SET updated_at = @now
+	DO UPDATE SET updated_at = NOW()
 	RETURNING id, telegram_id, created_at, updated_at
 `
 
 func (r *SberScribeRepo) GetOrCreateUser(ctx context.Context, telegramID int64) (model.User, error) {
 	args := pgx.NamedArgs{
 		"telegramID": telegramID,
-		"now":        time.Now(),
 	}
 
 	var user model.User

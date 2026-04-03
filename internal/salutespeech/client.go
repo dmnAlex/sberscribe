@@ -52,44 +52,45 @@ func NewSaluteClient(tokenMgr *auth.TokenManager, tlsConfig *tls.Config) (*Clien
 func (c *Client) Close() { c.conn.Close() }
 
 func (c *Client) Upload(ctx context.Context, data io.Reader) (string, error) {
-	token, err := c.tokenMgr.GetToken(ctx, auth.ScopeSaluteSpeechPers)
+	ctx, err := c.prepareContext(ctx)
 	if err != nil {
-		return "", errors.Wrap(err, "get token")
+		return "", errors.Wrap(err, "prepare context")
 	}
 
-	md := metadata.New(map[string]string{"authorization": "Bearer " + token})
-	ctx = metadata.NewOutgoingContext(ctx, md)
-
-	requestFileID, err := c.upload(ctx, data)
-	return requestFileID, errors.Wrap(err, "upload")
+	return c.upload(ctx, data)
 }
 
-func (c *Client) Recognize(ctx context.Context, requestFileID, mimeType string) (string, string, []byte, error) {
-	token, err := c.tokenMgr.GetToken(ctx, auth.ScopeSaluteSpeechPers)
+func (c *Client) Recognize(ctx context.Context, uploadFileID, mimeType string) (string, error) {
+	ctx, err := c.prepareContext(ctx)
 	if err != nil {
-		return "", "", nil, errors.Wrap(err, "get token")
+		return "", errors.Wrap(err, "prepare context")
 	}
 
-	md := metadata.New(map[string]string{"authorization": "Bearer " + token})
-	ctx = metadata.NewOutgoingContext(ctx, md)
+	return c.asyncRecognize(ctx, uploadFileID, mimeType)
+}
 
-	taskID, err := c.asyncRecognize(ctx, requestFileID, mimeType)
+func (c *Client) PollTask(ctx context.Context, taskID string) (string, error) {
+	ctx, err := c.prepareContext(ctx)
 	if err != nil {
-		return "", "", nil, errors.Wrap(err, "async recognize")
+		return "", errors.Wrap(err, "prepare context")
 	}
 
-	responseFileID, err := c.pollTask(ctx, taskID)
+	return c.pollTask(ctx, taskID)
+}
+
+func (c *Client) Download(ctx context.Context, downloadFileID string) (string, []byte, error) {
+	ctx, err := c.prepareContext(ctx)
 	if err != nil {
-		return "", "", nil, errors.Wrap(err, "poll task")
+		return "", nil, errors.Wrap(err, "prepare context")
 	}
 
-	raw, err := c.download(ctx, responseFileID)
+	raw, err := c.download(ctx, downloadFileID)
 	if err != nil {
-		return "", "", nil, errors.Wrap(err, "download")
+		return "", nil, errors.Wrap(err, "download")
 	}
 
 	text, err := extractText(raw)
-	return responseFileID, text, raw, errors.Wrap(err, "extract text")
+	return text, raw, errors.Wrap(err, "extract text")
 }
 
 func (c *Client) upload(ctx context.Context, audio io.Reader) (string, error) {
@@ -236,4 +237,14 @@ func extractText(raw []byte) (string, error) {
 	}
 
 	return sb.String(), nil
+}
+
+func (c *Client) prepareContext(ctx context.Context) (context.Context, error) {
+	token, err := c.tokenMgr.GetToken(ctx, auth.ScopeSaluteSpeechPers)
+	if err != nil {
+		return nil, errors.Wrap(err, "get token")
+	}
+
+	md := metadata.New(map[string]string{"authorization": "Bearer " + token})
+	return metadata.NewOutgoingContext(ctx, md), nil
 }

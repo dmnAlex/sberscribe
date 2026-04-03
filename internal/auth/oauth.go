@@ -88,7 +88,7 @@ func (c *OAuthHTTPClient) GetToken(ctx context.Context, clientSecret string, sco
 		return "", errors.New("empty access_token")
 	}
 
-	logger.Log.Debug("got new token", "scope", scope, "token", tr.AccessToken, "exp", tr.ExpiresAt) // TODO DEBUG
+	logger.Log.Debug("got new token", "scope", scope, "exp", tr.ExpiresAt)
 
 	return tr.AccessToken, nil
 }

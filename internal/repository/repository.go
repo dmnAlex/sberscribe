@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/dmnAlex/sberscribe/internal/model"
 	"github.com/dmnAlex/sberscribe/internal/storage/pg"
@@ -15,16 +16,21 @@ type Repository interface {
 
 	GetOrCreateUser(ctx context.Context, telegramID int64) (model.User, error)
 
-	CreateMeeting(ctx context.Context, userID int64, telegramFileID string) (int64, error)
-	UpdateMeeting(ctx context.Context, id int64, title, summary string) error
+	CreateRecord(userID, chatID int64, botFileID, mimeType string) (int64, error)
+	GetRecord(userID, id int64) (model.Record, error)
+	GetRecordsByUserID(userID int64) ([]model.Record, error)
+	FindRecords(userID int64, query string) ([]model.Record, error)
 
-	CreateTranscription(ctx context.Context, meetingID int64, requestFileID string, status model.TranscriptionStatus) error
-	UpdateTranscription(ctx context.Context, meetingID int64, responseFileID, content *string, raw json.RawMessage, status model.TranscriptionStatus) error
+	UpdateRecordUploadFileID(ID int64, uploadFileID string) error
+	UpdateRecordTaskID(ID int64, taskID string) error
+	UpdateRecordDownloadFileID(ID int64, downloadFileID string) error
+	UpdateRecordContentAndRaw(ID int64, content string, raw json.RawMessage) error
+	UpdateRecordTitleAndSummary(ID int64, title, summary string) error
 
-	GetMeetinsByUser(ctx context.Context, userID int64) ([]model.Meeting, error)
-	GetMeetingWithTranscription(ctx context.Context, userID, id int64) (model.MeetingWithTranscription, error)
-
-	FindMeetings(ctx context.Context, userID int64, query string) ([]model.Meeting, error)
+	GetNextRecordsBatch(batchSize int) ([]model.Record, error)
+	RollbackRecordStatus(ID int64) error
+	ReleaseStaleRecords(staleThreshold time.Time) error
+	DeleteRecord(ID int64) error
 }
 
 type SberScribeRepo struct {
@@ -43,58 +49,4 @@ func (r *SberScribeRepo) DoTx(f func(r Repository) error, opts ...*pgx.TxOptions
 
 func (r *SberScribeRepo) Close() error {
 	return errors.Wrap(r.db.Close(), "close")
-}
-
-const getMeetingsByUserSQL = `
-	SELECT m.id, m.telegram_file_id, m.title, m.summary
-	FROM meetings m
-	JOIN transcriptions t ON m.id = t.meeting_id
-	WHERE m.user_id = @userID AND t.status = @status
-	ORDER BY m.created_at
-`
-
-func (r *SberScribeRepo) GetMeetinsByUser(ctx context.Context, userID int64) ([]model.Meeting, error) {
-	args := pgx.NamedArgs{
-		"userID": userID,
-		"status": model.StatusDone,
-	}
-
-	return pg.QueryMany(r.db, getMeetingsByUserSQL, pg.IfaceListFunc[*model.Meeting](), args)
-}
-
-const getMeetingWithTranscriptionSQL = `
-	SELECT m.id, m.telegram_file_id, m.title, m.summary, 
-		t.request_file_id, t.response_file_id, t.content, t.raw, t.status
-	FROM meetings m
-	JOIN transcriptions t ON m.id = t.meeting_id
-	WHERE m.user_id = @userID AND m.id = @id
-`
-
-func (r *SberScribeRepo) GetMeetingWithTranscription(ctx context.Context, userID, id int64) (model.MeetingWithTranscription, error) {
-	args := pgx.NamedArgs{
-		"userID": userID,
-		"id":     id,
-	}
-
-	var meeting model.MeetingWithTranscription
-	err := r.db.WithCtx(ctx).QueryRow(getMeetingWithTranscriptionSQL, args, meeting.AsIfaceList()...)
-	return meeting, pg.WrapNotFound(err)
-}
-
-const findMeetingsSQL = `
-	SELECT m.id, m.telegram_file_id, m.title, m.summary
-	FROM meetings m
-	JOIN transcriptions t ON m.id = t.meeting_id
-	WHERE m.user_id = @userID AND t.status = @status AND t.content_fts @@ websearch_to_tsquery('russian', @query)
-	ORDER BY ts_rank(t.content_fts, websearch_to_tsquery('russian', @query)) DESC, m.created_at DESC
-`
-
-func (r *SberScribeRepo) FindMeetings(ctx context.Context, userID int64, query string) ([]model.Meeting, error) {
-	args := pgx.NamedArgs{
-		"userID": userID,
-		"status": model.StatusDone,
-		"query":  query,
-	}
-
-	return pg.QueryMany(r.db, findMeetingsSQL, pg.IfaceListFunc[*model.Meeting](), args)
 }
