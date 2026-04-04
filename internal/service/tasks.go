@@ -13,12 +13,12 @@ import (
 	"gopkg.in/telebot.v3"
 )
 
-func (s *SberScribeService) taskWorker(ctx context.Context) error {
-	logger.Log.Debug("start task worker")
+func (s *SberScribeService) taskWorker(ctx context.Context, ID int) error {
+	logger.Log.Debug("start task worker", "id", ID)
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Log.Debug("stop task worker")
+			logger.Log.Debug("stop task worker", "id", ID)
 			return nil
 		case task := <-s.bot.InCh():
 			if err := s.processTask(task); err != nil {

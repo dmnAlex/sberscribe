@@ -18,7 +18,8 @@ const (
 	pollDelay            = 3 * time.Second
 	defaultAttemptsLimit = 10
 	pollAttemptsLimit    = 50
-	workerCount          = 10
+	recordWorkersCount   = 10
+	taskWorkerCount      = 10
 	staleTime            = 3 * time.Minute
 )
 
@@ -52,16 +53,18 @@ func (s *SberScribeService) StartWorkers() {
 	})
 
 	s.eg.Go(func() error {
-		return s.taskWorker(ctx)
-	})
-
-	s.eg.Go(func() error {
 		return s.staleRecordWorker(ctx)
 	})
 
-	for i := range workerCount {
+	for i := range recordWorkersCount {
 		s.eg.Go(func() error {
 			return s.recordWorker(ctx, i)
+		})
+	}
+
+	for i := range taskWorkerCount {
+		s.eg.Go(func() error {
+			return s.taskWorker(ctx, i)
 		})
 	}
 }

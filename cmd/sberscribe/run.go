@@ -58,14 +58,14 @@ func run() error {
 		return errors.Wrap(err, "new bot")
 	}
 
-	service, err := service.New(globalCtx, repo, ssClient, gcClient, bot)
+	srv, err := service.New(globalCtx, repo, ssClient, gcClient, bot)
 	if err != nil {
 		return errors.Wrap(err, "new bot service")
 	}
 
 	go bot.Start()
 	logger.Log.Info("bot started")
-	service.StartWorkers()
+	srv.StartWorkers()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
@@ -73,7 +73,7 @@ func run() error {
 
 	logger.Log.Info("shutdown signal received")
 	cancel()
-	service.Stop()
+	srv.Stop()
 
 	return nil
 }
