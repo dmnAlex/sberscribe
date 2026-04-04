@@ -3,12 +3,12 @@ package service
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/dmnAlex/sberscribe/internal/logger"
 	"github.com/dmnAlex/sberscribe/internal/model"
 	"github.com/dmnAlex/sberscribe/internal/model/errx"
+	"github.com/dmnAlex/sberscribe/internal/model/msgx"
 	"github.com/pkg/errors"
 	"gopkg.in/telebot.v3"
 )
@@ -71,16 +71,7 @@ func (s *SberScribeService) taskStart(task model.InTask) (string, error) {
 		return "", errors.Wrap(err, "get or create user")
 	}
 
-	msg := fmt.Sprintf(`
-	👋 Привет, %s! Я умный помощник для конспектирования.\n
-	Отправь мне голосовое сообщение или аудиофайл, и я сделаю выжимку.\n
-	\n
-	Команды:\n
-	/list - список встреч\n
-	/get <id> - детали встречи\n
-	/find <query> - поиск по встречам\т
-	/chat <вопрос> - спросить ИИ
-`, name)
+	msg := fmt.Sprintf(msgx.GreetingMsg, name)
 	return msg, nil
 }
 
@@ -103,12 +94,7 @@ func (s *SberScribeService) taskList(task model.InTask) (string, error) {
 }
 
 func (s *SberScribeService) taskGet(task model.InTask) (string, error) {
-	strId := task.Data.(string)
-	id, err := strconv.ParseInt(strId, 10, 64)
-	if err != nil {
-		return "", errors.Wrap(err, "parse int")
-	}
-
+	id := task.Data.(int64)
 	user, err := s.repo.GetOrCreateUser(s.stopCtx, task.UserID)
 	if err != nil {
 		return "", errors.Wrap(err, "get or create user")

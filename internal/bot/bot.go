@@ -48,6 +48,7 @@ func NewBot(ctx context.Context, token string) (*Bot, error) {
 	b.Handle("/chat", bot.handleChat)
 	b.Handle(telebot.OnVoice, bot.handleVoice)
 	b.Handle(telebot.OnAudio, bot.handleAudio)
+	b.Handle(telebot.OnText, bot.handleText)
 
 	return bot, nil
 }
