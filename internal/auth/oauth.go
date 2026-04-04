@@ -54,14 +54,14 @@ func NewOAuthHTTPClient(tlsConfig *tls.Config) *OAuthHTTPClient {
 	}
 }
 
-func (c *OAuthHTTPClient) GetToken(ctx context.Context, clientSecret string, scope Scope) (string, error) {
+func (c *OAuthHTTPClient) GetToken(ctx context.Context, clientSecret string, scope Scope) (tokenResponse, error) {
 	data := url.Values{
 		"scope": {scope.String()},
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.authURL, bytes.NewBufferString(data.Encode()))
 	if err != nil {
-		return "", errors.Wrap(err, "new request with context")
+		return tokenResponse{}, errors.Wrap(err, "new request with context")
 	}
 	req.Header.Set("Authorization", "Basic "+clientSecret)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -69,23 +69,23 @@ func (c *OAuthHTTPClient) GetToken(ctx context.Context, clientSecret string, sco
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", errors.Wrap(err, "http do")
+		return tokenResponse{}, errors.Wrap(err, "http do")
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return "", errors.Errorf("oauth bad status: %d", res.StatusCode)
+		return tokenResponse{}, errors.Errorf("oauth bad status: %d", res.StatusCode)
 	}
 
 	var tr tokenResponse
 	if err := json.NewDecoder(res.Body).Decode(&tr); err != nil {
-		return "", errors.Wrap(err, "json decode")
+		return tokenResponse{}, errors.Wrap(err, "json decode")
 	}
 	if tr.AccessToken == "" {
-		return "", errors.New("empty access_token")
+		return tokenResponse{}, errors.New("empty access_token")
 	}
 
 	logger.Log.Debug("got new token", "scope", scope, "exp", tr.ExpiresAt)
 
-	return tr.AccessToken, nil
+	return tr, nil
 }

@@ -9,28 +9,23 @@ import (
 	"github.com/pkg/errors"
 )
 
-const tokenDuration = 25 * time.Minute
+const tokenMargin = time.Minute
 
 type OAuthClient interface {
-	GetToken(ctx context.Context, clientSecret string, scope Scope) (string, error)
-}
-
-type tokenEntry struct {
-	token     string
-	expiresAt time.Time
+	GetToken(ctx context.Context, clientSecret string, scope Scope) (tokenResponse, error)
 }
 
 type TokenManager struct {
 	oauth  OAuthClient
 	creds  map[Scope]string
+	tokens map[Scope]tokenResponse
 	mu     sync.RWMutex
-	tokens map[Scope]tokenEntry
 }
 
 func NewTokenManager(oauth OAuthClient, cfg *config.Config) *TokenManager {
 	return &TokenManager{
 		oauth:  oauth,
-		tokens: make(map[Scope]tokenEntry),
+		tokens: make(map[Scope]tokenResponse),
 		creds: map[Scope]string{
 			ScopeSaluteSpeechPers: cfg.SaluteSpeechClientSecret,
 			ScopeGigaChatPers:     cfg.GigaChatClientSecret,
@@ -40,24 +35,21 @@ func NewTokenManager(oauth OAuthClient, cfg *config.Config) *TokenManager {
 
 func (m *TokenManager) GetToken(ctx context.Context, scope Scope) (string, error) {
 	m.mu.RLock()
-	if entry, ok := m.tokens[scope]; ok && time.Now().Before(entry.expiresAt) {
+	if entry, ok := m.tokens[scope]; ok && time.Now().Before(time.Unix(entry.ExpiresAt, 0)) {
 		m.mu.RUnlock()
-		return entry.token, nil
+		return entry.AccessToken, nil
 	}
 	m.mu.RUnlock()
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	token, err := m.oauth.GetToken(ctx, m.creds[scope], scope)
+	tr, err := m.oauth.GetToken(ctx, m.creds[scope], scope)
 	if err != nil {
 		return "", errors.Wrap(err, "oauth get token")
 	}
+	tr.ExpiresAt = time.Unix(tr.ExpiresAt, 0).Add(-tokenMargin).Unix()
+	m.tokens[scope] = tr
 
-	m.tokens[scope] = tokenEntry{
-		token:     token,
-		expiresAt: time.Now().Add(tokenDuration),
-	}
-
-	return token, nil
+	return tr.AccessToken, nil
 }
