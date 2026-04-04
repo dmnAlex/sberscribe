@@ -16,12 +16,10 @@ type Config struct {
 	DatabaseDSN    string `env:"DATABASE_DSN" json:"database_dsn"`
 	MigrationsPath string `env:"MIGRATIONS_PATH" json:"migrations_path"`
 
-	TelegramToken string `env:"TELEGRAM_TOKEN,required" json:"-"`
-
+	TelegramToken            string `env:"TELEGRAM_TOKEN,required" json:"-"`
 	SaluteSpeechClientSecret string `env:"SALUTE_SPEECH_CLIENT_SECRET,required" json:"-"`
-
-	GigaChatClientSecret string `env:"GIGA_CHAT_CLIENT_SECRET,required" json:"-"`
-	GigaChatModel        string `env:"GIGACHAT_MODEL" json:"giga_chat_model"`
+	GigaChatClientSecret     string `env:"GIGA_CHAT_CLIENT_SECRET,required" json:"-"`
+	GigaChatModel            string `env:"GIGACHAT_MODEL" json:"giga_chat_model"`
 
 	CACertPath string `env:"CA_CERT_PATH,required" json:"-"`
 }

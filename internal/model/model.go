@@ -3,6 +3,8 @@ package model
 import (
 	"encoding/json"
 	"time"
+
+	"gopkg.in/telebot.v3"
 )
 
 type User struct {
@@ -111,9 +113,27 @@ type InTask struct {
 	Data   any
 }
 
+func NewInTask(c telebot.Context, typ TaskType, data any) InTask {
+	return InTask{
+		Type:   typ,
+		ChatID: c.Chat().ID,
+		UserID: c.Sender().ID,
+		Data:   data,
+	}
+}
+
 type OutTask struct {
 	ChatID  int64
 	Message string
+	Mode    telebot.ParseMode
+}
+
+func NewOutTask(chatID int64, msg string, mode telebot.ParseMode) OutTask {
+	return OutTask{
+		ChatID:  chatID,
+		Message: msg,
+		Mode:    mode,
+	}
 }
 
 type FileInfo struct {

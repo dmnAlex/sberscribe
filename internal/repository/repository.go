@@ -31,6 +31,8 @@ type Repository interface {
 	RollbackRecordStatus(ID int64) error
 	ReleaseStaleRecords(staleThreshold time.Time) error
 	DeleteRecord(ID int64) error
+
+	Close() error
 }
 
 type SberScribeRepo struct {

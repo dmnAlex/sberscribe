@@ -1,9 +1,11 @@
 package bot
 
 import (
+	"context"
 	"io"
 	"time"
 
+	"github.com/dmnAlex/sberscribe/internal/logger"
 	"github.com/dmnAlex/sberscribe/internal/model"
 	"github.com/pkg/errors"
 	"gopkg.in/telebot.v3"
@@ -15,13 +17,13 @@ const (
 )
 
 type Bot struct {
-	bot    *telebot.Bot
-	inCh   chan model.InTask
-	outCh  chan model.OutTask
-	stopCh chan struct{}
+	stopCtx context.Context
+	bot     *telebot.Bot
+	inCh    chan model.InTask
+	outCh   chan model.OutTask
 }
 
-func NewBot(token string) (*Bot, error) {
+func NewBot(ctx context.Context, token string) (*Bot, error) {
 	settings := telebot.Settings{
 		Token:  token,
 		Poller: &telebot.LongPoller{Timeout: pollTimeout},
@@ -33,10 +35,10 @@ func NewBot(token string) (*Bot, error) {
 	}
 
 	bot := &Bot{
-		bot:    b,
-		inCh:   make(chan model.InTask, chanSize),
-		outCh:  make(chan model.OutTask, chanSize),
-		stopCh: make(chan struct{}),
+		stopCtx: ctx,
+		bot:     b,
+		inCh:    make(chan model.InTask, chanSize),
+		outCh:   make(chan model.OutTask, chanSize),
 	}
 
 	b.Handle("/start", bot.handleStart)
@@ -56,7 +58,6 @@ func (b *Bot) Start() {
 }
 
 func (b *Bot) Stop() {
-	close(b.stopCh)
 	b.bot.Stop()
 }
 
@@ -74,13 +75,15 @@ func (b *Bot) GetFileRC(fileID string) (io.ReadCloser, error) {
 }
 
 func (b *Bot) sendReply(task model.OutTask) {
-	b.bot.Send(telebot.ChatID(task.ChatID), task.Message, telebot.ModeHTML)
+	b.bot.Send(telebot.ChatID(task.ChatID), task.Message, task.Mode)
 }
 
 func (b *Bot) outputWorker() {
+	logger.Log.Debug("start output worker")
 	for {
 		select {
-		case <-b.stopCh:
+		case <-b.stopCtx.Done():
+			logger.Log.Debug("stop output worker")
 			return
 		case task := <-b.outCh:
 			b.sendReply(task)

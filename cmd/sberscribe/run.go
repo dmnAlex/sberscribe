@@ -36,11 +36,12 @@ func run() error {
 	}
 	defer db.Close()
 
-	tokenMgr := auth.NewTokenManager(auth.NewOAuthHTTPClient(), cfg)
 	tlsConfig, err := utils.NewTLSConfig(cfg.CACertPath)
 	if err != nil {
 		return errors.Wrap(err, "new tls config")
 	}
+	tokenMgr := auth.NewTokenManager(auth.NewOAuthHTTPClient(tlsConfig), cfg)
+	repo := repository.New(db)
 
 	ssClient, err := salutespeech.NewSaluteClient(tokenMgr, tlsConfig)
 	if err != nil {
@@ -52,21 +53,19 @@ func run() error {
 		return errors.Wrap(err, "new giga client")
 	}
 
-	repo := repository.New(db)
-
-	bot, err := bot.NewBot(cfg.TelegramToken)
+	bot, err := bot.NewBot(globalCtx, cfg.TelegramToken)
 	if err != nil {
 		return errors.Wrap(err, "new bot")
 	}
 
-	botService, err := service.New(globalCtx, repo, ssClient, gcClient, bot)
+	service, err := service.New(globalCtx, repo, ssClient, gcClient, bot)
 	if err != nil {
 		return errors.Wrap(err, "new bot service")
 	}
 
 	go bot.Start()
 	logger.Log.Info("bot started")
-	botService.StartWorkers()
+	service.StartWorkers()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
@@ -74,8 +73,7 @@ func run() error {
 
 	logger.Log.Info("shutdown signal received")
 	cancel()
-	botService.Stop()
-	bot.Stop()
+	service.Stop()
 
 	return nil
 }

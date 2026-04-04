@@ -67,5 +67,9 @@ func (s *SberScribeService) StartWorkers() {
 }
 
 func (s *SberScribeService) Stop() {
+	s.bot.Stop()
 	s.eg.Wait()
+	s.salute.Close()
+	s.giga.Close()
+	s.repo.Close()
 }

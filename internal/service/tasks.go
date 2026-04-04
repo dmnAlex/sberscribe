@@ -10,14 +10,15 @@ import (
 	"github.com/dmnAlex/sberscribe/internal/model"
 	"github.com/dmnAlex/sberscribe/internal/model/errx"
 	"github.com/pkg/errors"
+	"gopkg.in/telebot.v3"
 )
 
 func (s *SberScribeService) taskWorker(ctx context.Context) error {
-	logger.Log.Info("start task worker")
+	logger.Log.Debug("start task worker")
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Log.Info("stop task worker")
+			logger.Log.Debug("stop task worker")
 			return nil
 		case task := <-s.bot.InCh():
 			if err := s.processTask(task); err != nil {
@@ -32,9 +33,11 @@ func (s *SberScribeService) processTask(task model.InTask) error {
 		msg string
 		err error
 	)
+	mode := telebot.ModeHTML
 	switch task.Type {
 	case model.TaskStart:
 		msg, err = s.taskStart(task)
+		mode = telebot.ModeMarkdown
 	case model.TaskList:
 		msg, err = s.taskList(task)
 	case model.TaskGet:
@@ -51,11 +54,11 @@ func (s *SberScribeService) processTask(task model.InTask) error {
 
 	if err != nil {
 		logger.Log.Error("process task", "error", err, "type", task.Type, "data", task.Data)
-		s.bot.OutCh() <- model.OutTask{ChatID: task.ChatID, Message: "Что-то пошло не так."}
+		s.bot.OutCh() <- model.NewOutTask(task.ChatID, "Что-то пошло не так.", mode)
 		return nil
 	}
 
-	s.bot.OutCh() <- model.OutTask{ChatID: task.ChatID, Message: msg}
+	s.bot.OutCh() <- model.NewOutTask(task.ChatID, msg, mode)
 
 	return nil
 }

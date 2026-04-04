@@ -13,7 +13,7 @@ import (
 )
 
 func (s *SberScribeService) recordBatchWorker(ctx context.Context) error {
-	logger.Log.Info("start record batch worker")
+	logger.Log.Debug("start record batch worker")
 	for {
 		batch, err := s.repo.GetNextRecordsBatch(batchSize)
 		if err != nil && !errors.Is(err, errx.ErrNotFound) {
@@ -26,7 +26,7 @@ func (s *SberScribeService) recordBatchWorker(ctx context.Context) error {
 
 		select {
 		case <-ctx.Done():
-			logger.Log.Info("stop record batch worker")
+			logger.Log.Debug("stop record batch worker")
 			return nil
 		case <-time.After(pollDelay):
 		}
@@ -34,11 +34,11 @@ func (s *SberScribeService) recordBatchWorker(ctx context.Context) error {
 }
 
 func (s *SberScribeService) recordWorker(ctx context.Context, ID int) error {
-	logger.Log.Info("start record worker", "id", ID)
+	logger.Log.Debug("start record worker", "id", ID)
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Log.Info("stop record worker", "id", ID)
+			logger.Log.Debug("stop record worker", "id", ID)
 			return nil
 		case record := <-s.recordCh:
 			if err := s.processRecord(record); err != nil {
@@ -49,7 +49,7 @@ func (s *SberScribeService) recordWorker(ctx context.Context, ID int) error {
 }
 
 func (s *SberScribeService) staleRecordWorker(ctx context.Context) error {
-	logger.Log.Info("start stale record worker")
+	logger.Log.Debug("start stale record worker")
 	for {
 		threshold := time.Now().Add(-staleTime)
 		if err := s.repo.ReleaseStaleRecords(threshold); err != nil {
@@ -58,7 +58,7 @@ func (s *SberScribeService) staleRecordWorker(ctx context.Context) error {
 
 		select {
 		case <-ctx.Done():
-			logger.Log.Info("stop stale record worker")
+			logger.Log.Debug("stop stale record worker")
 			return nil
 		case <-time.After(pollDelay):
 		}

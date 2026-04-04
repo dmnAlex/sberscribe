@@ -40,12 +40,9 @@ type OAuthHTTPClient struct {
 	authURL    string
 }
 
-func NewOAuthHTTPClient() *OAuthHTTPClient {
-	// TODO добавить сертификаты
+func NewOAuthHTTPClient(tlsConfig *tls.Config) *OAuthHTTPClient {
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
+		TLSClientConfig: tlsConfig,
 	}
 
 	return &OAuthHTTPClient{
