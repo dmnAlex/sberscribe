@@ -87,7 +87,7 @@ func (s *SberScribeService) taskList(task model.InTask) (string, error) {
 	}
 
 	if len(records) == 0 {
-		return "У вас пока нет встреч.", nil
+		return "У вас пока нет записей.", nil
 	}
 
 	return formatRecordsTable(records), nil
@@ -103,14 +103,14 @@ func (s *SberScribeService) taskGet(task model.InTask) (string, error) {
 	record, err := s.repo.GetRecord(user.ID, id)
 	if err != nil {
 		if errors.Is(err, errx.ErrNotFound) {
-			return "Встреча не найдена.", nil
+			return "Запись не найдена.", nil
 		}
 
 		return "", errors.Wrap(err, "get record")
 	}
 
 	if record.Status != model.StatusSummarized {
-		return "Встреча еще в обработке.", nil
+		return "Запись еще в обработке.", nil
 	}
 
 	return formatRecord(record), nil
@@ -147,7 +147,7 @@ func (s *SberScribeService) taskRecord(task model.InTask) (string, error) {
 		return "", errors.Wrap(err, "create record")
 	}
 
-	msg := fmt.Sprintf("Встреча %d принята в обработку.", id)
+	msg := fmt.Sprintf("Запись %d принята в обработку.", id)
 	return msg, nil
 }
 
@@ -169,7 +169,7 @@ func (s *SberScribeService) taskChat(task model.InTask) (string, error) {
 func formatRecordsTable(meetings []model.Record) string {
 	var sb strings.Builder
 
-	sb.WriteString("<b>Ваши встречи</b>\n\n")
+	sb.WriteString("<b>Ваши записи</b>\n\n")
 	sb.WriteString("<b>ID</b> | <b>Название</b>\n")
 	sb.WriteString("-----------------------\n")
 
