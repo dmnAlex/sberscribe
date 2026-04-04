@@ -5,11 +5,12 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/dmnAlex/sberscribe/internal/auth"
+	"github.com/dmnAlex/sberscribe/internal/model"
 	"github.com/dmnAlex/sberscribe/pkg/api/recognitionv1"
 	"github.com/dmnAlex/sberscribe/pkg/api/storagev1"
 	"github.com/dmnAlex/sberscribe/pkg/api/taskv1"
@@ -20,10 +21,8 @@ import (
 )
 
 const (
-	saluteAddress   = "smartspeech.sber.ru:443"
-	chunkSize       = 64 * 1024
-	pollInterval    = 5 * time.Second
-	maxPollAttempts = 20
+	saluteAddress = "smartspeech.sber.ru:443"
+	chunkSize     = 64 * 1024
 )
 
 type Client struct {
@@ -161,36 +160,29 @@ func (c *Client) asyncRecognize(ctx context.Context, requestFileID, mimeType str
 }
 
 func (c *Client) pollTask(ctx context.Context, taskID string) (string, error) {
-	for range maxPollAttempts {
-		req := taskv1.GetTaskRequest_builder{
-			TaskId: taskID,
-		}.Build()
+	req := taskv1.GetTaskRequest_builder{
+		TaskId: taskID,
+	}.Build()
 
-		res, err := c.taskClient.GetTask(ctx, req)
-		if err != nil {
-			return "", errors.Wrap(err, "get task")
-		}
-
-		switch res.GetStatus() {
-		case taskv1.Task_DONE:
-			if res.GetResponseFileId() == "" {
-				return "", errors.Errorf("empty response_file_id")
-			}
-			return res.GetResponseFileId(), nil
-		case taskv1.Task_ERROR:
-			return "", errors.Errorf("recognition error: %s", res.GetError())
-		case taskv1.Task_CANCELED:
-			return "", errors.New("task canceled")
-		}
-
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		case <-time.After(pollInterval):
-		}
+	res, err := c.taskClient.GetTask(ctx, req)
+	if err != nil {
+		return "", errors.Wrap(err, "get task")
 	}
 
-	return "", errors.New("timeout polling task")
+	switch res.GetStatus() {
+	case taskv1.Task_DONE:
+		if res.GetResponseFileId() == "" {
+			return "", errors.Errorf("empty response_file_id")
+		}
+	case taskv1.Task_ERROR:
+		msg := fmt.Sprintf("recognition error: %s", res.GetError())
+		return "", model.NewErrorWithStatus(msg, model.ErrorFailed)
+	case taskv1.Task_CANCELED:
+		msg := "task canceled"
+		return "", model.NewErrorWithStatus(msg, model.ErrorCanceled)
+	}
+
+	return res.GetResponseFileId(), nil
 }
 
 func (c *Client) download(ctx context.Context, responseFileID string) ([]byte, error) {

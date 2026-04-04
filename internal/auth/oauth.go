@@ -30,7 +30,7 @@ func (s Scope) String() string {
 	return string(s)
 }
 
-type tokenResponse struct {
+type tokenInfo struct {
 	AccessToken string `json:"access_token"`
 	ExpiresAt   int64  `json:"expires_at"`
 }
@@ -54,14 +54,14 @@ func NewOAuthHTTPClient(tlsConfig *tls.Config) *OAuthHTTPClient {
 	}
 }
 
-func (c *OAuthHTTPClient) GetToken(ctx context.Context, clientSecret string, scope Scope) (tokenResponse, error) {
+func (c *OAuthHTTPClient) GetToken(ctx context.Context, clientSecret string, scope Scope) (tokenInfo, error) {
 	data := url.Values{
 		"scope": {scope.String()},
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.authURL, bytes.NewBufferString(data.Encode()))
 	if err != nil {
-		return tokenResponse{}, errors.Wrap(err, "new request with context")
+		return tokenInfo{}, errors.Wrap(err, "new request with context")
 	}
 	req.Header.Set("Authorization", "Basic "+clientSecret)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -69,20 +69,20 @@ func (c *OAuthHTTPClient) GetToken(ctx context.Context, clientSecret string, sco
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return tokenResponse{}, errors.Wrap(err, "http do")
+		return tokenInfo{}, errors.Wrap(err, "http do")
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return tokenResponse{}, errors.Errorf("oauth bad status: %d", res.StatusCode)
+		return tokenInfo{}, errors.Errorf("oauth bad status: %d", res.StatusCode)
 	}
 
-	var tr tokenResponse
+	var tr tokenInfo
 	if err := json.NewDecoder(res.Body).Decode(&tr); err != nil {
-		return tokenResponse{}, errors.Wrap(err, "json decode")
+		return tokenInfo{}, errors.Wrap(err, "json decode")
 	}
 	if tr.AccessToken == "" {
-		return tokenResponse{}, errors.New("empty access_token")
+		return tokenInfo{}, errors.New("empty access_token")
 	}
 
 	logger.Log.Debug("got new token", "scope", scope, "exp", tr.ExpiresAt)

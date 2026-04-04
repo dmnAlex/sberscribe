@@ -140,3 +140,26 @@ type FileInfo struct {
 	FileID   string
 	MimeType string
 }
+
+type ErrorStatus int
+
+const (
+	ErrorFailed ErrorStatus = iota
+	ErrorCanceled
+)
+
+type ErrorWithStatus struct {
+	Message string
+	Status  ErrorStatus
+}
+
+func NewErrorWithStatus(msg string, status ErrorStatus) error {
+	return &ErrorWithStatus{
+		Message: msg,
+		Status:  status,
+	}
+}
+
+func (e *ErrorWithStatus) Error() string {
+	return e.Message
+}

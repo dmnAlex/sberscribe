@@ -70,7 +70,6 @@ func (s *SberScribeService) processRecord(record model.Record) error {
 		if err := s.repo.DeleteRecord(record.ID); err != nil {
 			return errors.Wrap(err, "delete record")
 		}
-
 		msg := fmt.Sprintf("Превышено максимальное количество попыток распознат запись %d. Попробуйте загрузить ее заново.", record.ID)
 		s.bot.OutCh() <- model.OutTask{ChatID: record.ChatID, Message: msg}
 		return nil
@@ -83,7 +82,17 @@ func (s *SberScribeService) processRecord(record model.Record) error {
 	case model.StatusRecognizing:
 		err = s.recordRecognizing(record)
 	case model.StatusPolling:
-		err = s.recordPolling(record)
+		var statusErr model.ErrorWithStatus
+		if err = s.recordPolling(record); err != nil && errors.As(err, &statusErr) {
+			if err := s.repo.DeleteRecord(record.ID); err != nil {
+				return errors.Wrap(err, "delete record")
+			}
+			msg := fmt.Sprintf("Ошибка при разпознавании записи %d. Попробуйте отгрузить файл заново.", record.ID)
+			if statusErr.Status == model.ErrorCanceled {
+				msg = fmt.Sprintf("Распознование записи %d было отменено.", record.ID)
+			}
+			s.bot.OutCh() <- model.OutTask{ChatID: record.ChatID, Message: msg}
+		}
 	case model.StatusDownloading:
 		err = s.recordDownloading(record)
 	case model.StatusSummarizing:

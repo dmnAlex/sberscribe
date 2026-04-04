@@ -34,7 +34,6 @@ func run() error {
 	if err != nil {
 		return errors.Wrap(err, "new pg")
 	}
-	defer db.Close()
 
 	tlsConfig, err := utils.NewTLSConfig(cfg.CACertPath)
 	if err != nil {
