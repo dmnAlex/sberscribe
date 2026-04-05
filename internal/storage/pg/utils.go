@@ -1,6 +1,8 @@
 package pg
 
 import (
+	"iter"
+
 	"github.com/dmnAlex/sberscribe/internal/model/errx"
 
 	"github.com/jackc/pgerrcode"
@@ -9,24 +11,34 @@ import (
 	"github.com/pkg/errors"
 )
 
-func QueryMany[T any](db *DB, query string, pointer func(*T) []any, args ...pgx.NamedArgs) ([]T, error) {
-	var res = []T{}
-	var arg pgx.NamedArgs
-	if len(args) > 0 {
-		arg = args[0]
-	}
+var errBreak = errors.New("break iter")
 
-	err := db.Query(query, arg, func(rows pgx.Rows) error {
-		var elem T
-		if err := rows.Scan(pointer(&elem)...); err != nil {
-			return errors.Wrap(err, "scan")
+func QueryMany[T any](db *DB, query string, pointer func(*T) []any, args ...pgx.NamedArgs) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		var arg pgx.NamedArgs
+		if len(args) > 0 {
+			arg = args[0]
 		}
 
-		res = append(res, elem)
-		return nil
-	})
+		err := db.Query(query, arg, func(rows pgx.Rows) error {
+			var elem T
+			if err := rows.Scan(pointer(&elem)...); err != nil {
+				yield(elem, errors.Wrap(err, "scan"))
+				return errBreak
+			}
 
-	return res, errors.Wrap(err, "query")
+			if !yield(elem, nil) {
+				return errBreak
+			}
+
+			return nil
+		})
+
+		if err != nil && !errors.Is(err, errBreak) {
+			var empty T
+			yield(empty, errors.Wrap(err, "query"))
+		}
+	}
 }
 
 type IfaceLister interface {

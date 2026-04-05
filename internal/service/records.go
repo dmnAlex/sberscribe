@@ -8,19 +8,19 @@ import (
 
 	"github.com/dmnAlex/sberscribe/internal/logger"
 	"github.com/dmnAlex/sberscribe/internal/model"
-	"github.com/dmnAlex/sberscribe/internal/model/errx"
 	"github.com/pkg/errors"
 )
 
 func (s *SberScribeService) recordBatchWorker(ctx context.Context) error {
 	logger.Log.Debug("start record batch worker")
 	for {
-		batch, err := s.repo.GetNextRecordsBatch(batchSize)
-		if err != nil && !errors.Is(err, errx.ErrNotFound) {
-			logger.Log.Error("get next record batch", "error", err)
-		}
+		batch := s.repo.GetNextRecordsBatch(batchSize)
+		for record, err := range batch {
+			if err != nil {
+				logger.Log.Error("iterate records batch", "error", err)
+				break
+			}
 
-		for _, record := range batch {
 			s.recordCh <- record
 		}
 

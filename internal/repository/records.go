@@ -2,6 +2,7 @@ package repository
 
 import (
 	"encoding/json"
+	"iter"
 	"time"
 
 	"github.com/dmnAlex/sberscribe/internal/model"
@@ -53,7 +54,7 @@ const getRecordsByUserIDSQL = `
 	ORDER BY created_at
 `
 
-func (r *SberScribeRepo) GetRecordsByUserID(userID int64) ([]model.Record, error) {
+func (r *SberScribeRepo) GetRecordsByUserID(userID int64) iter.Seq2[model.Record, error] {
 	args := pgx.NamedArgs{
 		"userID": userID,
 		"status": model.StatusSummarized,
@@ -69,7 +70,7 @@ const findRecordsSQL = `
 	ORDER BY ts_rank(content_tsv, websearch_to_tsquery('russian', @query)) DESC, created_at DESC
 `
 
-func (r *SberScribeRepo) FindRecords(userID int64, query string) ([]model.Record, error) {
+func (r *SberScribeRepo) FindRecords(userID int64, query string) iter.Seq2[model.Record, error] {
 	args := pgx.NamedArgs{
 		"userID": userID,
 		"status": model.StatusSummarized,
@@ -213,7 +214,7 @@ const getNextRecordsBatchSQL = `
 		r.download_file_id, r.content, r.title, r.summary, r.raw, r.status, r.attempts
 `
 
-func (r *SberScribeRepo) GetNextRecordsBatch(batchSize int) ([]model.Record, error) {
+func (r *SberScribeRepo) GetNextRecordsBatch(batchSize int) iter.Seq2[model.Record, error] {
 	args := pgx.NamedArgs{
 		"batchSize":   batchSize,
 		"finalStatus": model.StatusSummarized,

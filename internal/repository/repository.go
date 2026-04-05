@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"iter"
 	"time"
 
 	"github.com/dmnAlex/sberscribe/internal/model"
@@ -18,8 +19,8 @@ type Repository interface {
 
 	CreateRecord(userID, chatID int64, botFileID, mimeType string) (int64, error)
 	GetRecord(userID, id int64) (model.Record, error)
-	GetRecordsByUserID(userID int64) ([]model.Record, error)
-	FindRecords(userID int64, query string) ([]model.Record, error)
+	GetRecordsByUserID(userID int64) iter.Seq2[model.Record, error]
+	FindRecords(userID int64, query string) iter.Seq2[model.Record, error]
 
 	UpdateRecordUploadFileID(ID int64, uploadFileID string) error
 	UpdateRecordTaskID(ID int64, taskID string) error
@@ -27,7 +28,7 @@ type Repository interface {
 	UpdateRecordContentAndRaw(ID int64, content string, raw json.RawMessage) error
 	UpdateRecordTitleAndSummary(ID int64, title, summary string) error
 
-	GetNextRecordsBatch(batchSize int) ([]model.Record, error)
+	GetNextRecordsBatch(batchSize int) iter.Seq2[model.Record, error]
 	RollbackRecordStatus(ID int64) error
 	ReleaseStaleRecords(staleThreshold time.Time) error
 	DeleteRecord(ID int64) error

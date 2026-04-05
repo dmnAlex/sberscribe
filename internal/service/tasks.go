@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"iter"
 	"strings"
 
 	"github.com/dmnAlex/sberscribe/internal/logger"
@@ -81,16 +82,17 @@ func (s *SberScribeService) taskList(task model.InTask) (string, error) {
 		return "", errors.Wrap(err, "get or create user")
 	}
 
-	records, err := s.repo.GetRecordsByUserID(user.ID)
+	records := s.repo.GetRecordsByUserID(user.ID)
+	table, err := formatRecordsTable(records)
 	if err != nil {
-		return "", errors.Wrap(err, "get meetings by user")
+		if errors.Is(err, errx.ErrNotFound) {
+			return "У вас пока нет записей.", nil
+		}
+
+		return "", errors.Wrap(err, "format records table")
 	}
 
-	if len(records) == 0 {
-		return "У вас пока нет записей.", nil
-	}
-
-	return formatRecordsTable(records), nil
+	return table, nil
 }
 
 func (s *SberScribeService) taskGet(task model.InTask) (string, error) {
@@ -123,16 +125,17 @@ func (s *SberScribeService) taskFind(task model.InTask) (string, error) {
 		return "", errors.Wrap(err, "get or create user")
 	}
 
-	records, err := s.repo.FindRecords(user.ID, query)
+	records := s.repo.FindRecords(user.ID, query)
+	table, err := formatRecordsTable(records)
 	if err != nil {
-		return "", errors.Wrap(err, "find records")
+		if errors.Is(err, errx.ErrNotFound) {
+			return "По вашему запросу ничего не найдено.", nil
+		}
+
+		return "", errors.Wrap(err, "format records table")
 	}
 
-	if len(records) == 0 {
-		return "По вашему запросу ничего не найдено.", nil
-	}
-
-	return formatRecordsTable(records), nil
+	return table, nil
 }
 
 func (s *SberScribeService) taskRecord(task model.InTask) (string, error) {
@@ -166,18 +169,28 @@ func (s *SberScribeService) taskChat(task model.InTask) (string, error) {
 	return answer, nil
 }
 
-func formatRecordsTable(meetings []model.Record) string {
+func formatRecordsTable(records iter.Seq2[model.Record, error]) (string, error) {
 	var sb strings.Builder
 
 	sb.WriteString("<b>Ваши записи</b>\n\n")
 	sb.WriteString("<b>ID</b> | <b>Название</b>\n")
 	sb.WriteString("-----------------------\n")
 
-	for _, m := range meetings {
-		sb.WriteString(fmt.Sprintf("%d | %s\n", m.ID, *m.Title))
+	items := 0
+	for record, err := range records {
+		if err != nil {
+			return "", errors.Wrap(err, "iterate records")
+		}
+
+		sb.WriteString(fmt.Sprintf("%d | %s\n", record.ID, *record.Title))
+		items++
 	}
 
-	return sb.String()
+	if items == 0 {
+		return "", errx.ErrNotFound
+	}
+
+	return sb.String(), nil
 }
 
 func formatRecord(record model.Record) string {
