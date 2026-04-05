@@ -27,13 +27,6 @@ type Client struct {
 	modelClient gigachatv1.ModelsServiceClient
 }
 
-type ChatModel struct {
-	ID      string `json:"id"`
-	Object  string `json:"object"`
-	OwnedBy string `json:"owned_by"`
-	Type    string `json:"type"`
-}
-
 func NewGigaClient(tokenMgr *auth.TokenManager, tlsConfig *tls.Config, model string) (*Client, error) {
 	conn, err := grpc.NewClient(gigaAddr, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	if err != nil {
@@ -79,7 +72,7 @@ func (c *Client) Chat(ctx context.Context, msgs []model.ChatMessage) (string, er
 	return res.GetAlternatives()[0].GetMessage().GetContent(), nil
 }
 
-func (c *Client) GetModels(ctx context.Context) ([]ChatModel, error) {
+func (c *Client) GetModels(ctx context.Context) ([]model.ChatModel, error) {
 	ctx, err := c.prepareContext(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "prepare context")
@@ -92,17 +85,17 @@ func (c *Client) GetModels(ctx context.Context) ([]ChatModel, error) {
 		return nil, errors.Wrap(err, "list models")
 	}
 
-	var models []ChatModel
-	for _, model := range res.GetModels() {
-		models = append(models, ChatModel{
-			ID:      model.GetName(),
-			Object:  model.GetObject(),
-			OwnedBy: model.GetOwnedBy(),
-			Type:    model.GetType(),
+	var chatModels []model.ChatModel
+	for _, chatModel := range res.GetModels() {
+		chatModels = append(chatModels, model.ChatModel{
+			ID:      chatModel.GetName(),
+			Object:  chatModel.GetObject(),
+			OwnedBy: chatModel.GetOwnedBy(),
+			Type:    chatModel.GetType(),
 		})
 	}
 
-	return models, nil
+	return chatModels, nil
 }
 
 func (c *Client) prepareContext(ctx context.Context) (context.Context, error) {

@@ -49,7 +49,7 @@ func New() (*Config, error) {
 		}
 	}
 
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, errors.Wrap(err, "load env file")
 	}
 

@@ -95,6 +95,13 @@ type SummarizeResult struct {
 	Summary string `json:"summary"`
 }
 
+type ChatModel struct {
+	ID      string `json:"id"`
+	Object  string `json:"object"`
+	OwnedBy string `json:"owned_by"`
+	Type    string `json:"type"`
+}
+
 type TaskType int
 
 const (

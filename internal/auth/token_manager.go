@@ -35,9 +35,9 @@ func NewTokenManager(oauth OAuthClient, cfg *config.Config) *TokenManager {
 
 func (m *TokenManager) GetToken(ctx context.Context, scope Scope) (string, error) {
 	m.mu.RLock()
-	if tkn, ok := m.tokens[scope]; ok && time.Now().Before(time.Unix(tkn.ExpiresAt, 0)) {
+	if cached, ok := m.tokens[scope]; ok && cached.ExpiresAt > time.Now().Unix() {
 		m.mu.RUnlock()
-		return tkn.AccessToken, nil
+		return cached.AccessToken, nil
 	}
 	m.mu.RUnlock()
 
@@ -45,12 +45,15 @@ func (m *TokenManager) GetToken(ctx context.Context, scope Scope) (string, error
 	if err != nil {
 		return "", errors.Wrap(err, "oauth get token")
 	}
-	tkn.ExpiresAt = time.Unix(tkn.ExpiresAt, 0).Add(-tokenMargin).Unix()
+	tkn.ExpiresAt -= int64(tokenMargin.Seconds())
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.tokens[scope] = tkn
+	if cached, ok := m.tokens[scope]; ok && cached.ExpiresAt > time.Now().Unix() {
+		return cached.AccessToken, nil
+	}
 
+	m.tokens[scope] = tkn
 	return tkn.AccessToken, nil
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/dmnAlex/sberscribe/internal/bot"
@@ -11,6 +12,27 @@ import (
 	"github.com/dmnAlex/sberscribe/internal/salutespeech"
 	"golang.org/x/sync/errgroup"
 )
+
+type RecognitionClient interface {
+	Upload(ctx context.Context, data io.Reader) (string, error)
+	Recognize(ctx context.Context, uploadFileID, mimeType string) (string, error)
+	PollTask(ctx context.Context, taskID string) (string, error)
+	Download(ctx context.Context, downloadFileID string) (string, []byte, error)
+	Close()
+}
+
+type ChatClient interface {
+	Chat(ctx context.Context, msgs []model.ChatMessage) (string, error)
+	GetModels(ctx context.Context) ([]model.ChatModel, error)
+	Close()
+}
+
+type Bot interface {
+	InCh() <-chan model.InTask
+	OutCh() chan<- model.OutTask
+	GetFileRC(fileID string) (io.ReadCloser, error)
+	Stop()
+}
 
 const (
 	chanSize             = 100
@@ -27,9 +49,9 @@ type SberScribeService struct {
 	stopCtx  context.Context
 	eg       *errgroup.Group
 	repo     repository.Repository
-	salute   *salutespeech.Client
-	giga     *gigachat.Client
-	bot      *bot.Bot
+	salute   RecognitionClient
+	giga     ChatClient
+	bot      Bot
 	recordCh chan model.Record
 }
 

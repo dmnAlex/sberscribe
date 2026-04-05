@@ -66,7 +66,7 @@ func (s *SberScribeService) staleRecordWorker(ctx context.Context) error {
 }
 
 func (s *SberScribeService) processRecord(record model.Record) error {
-	if record.Status == model.StatusPolling && record.Attempts > pollAttemptsLimit || record.Attempts > defaultAttemptsLimit {
+	if (record.Status == model.StatusPolling && record.Attempts > pollAttemptsLimit) || record.Attempts > defaultAttemptsLimit {
 		if err := s.repo.DeleteRecord(record.ID); err != nil {
 			return errors.Wrap(err, "delete record")
 		}
@@ -82,7 +82,7 @@ func (s *SberScribeService) processRecord(record model.Record) error {
 	case model.StatusRecognizing:
 		err = s.recordRecognizing(record)
 	case model.StatusPolling:
-		var statusErr model.ErrorWithStatus
+		var statusErr *model.ErrorWithStatus
 		if err = s.recordPolling(record); err != nil && errors.As(err, &statusErr) {
 			if err := s.repo.DeleteRecord(record.ID); err != nil {
 				return errors.Wrap(err, "delete record")
