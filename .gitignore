@@ -1,0 +1,15 @@
+# Binaries
+/sberscribe
+
+# IDEs directories
+.idea
+.vscode
+
+# Storage
+*.json
+
+# env
+.env
+
+# certs
+certs
